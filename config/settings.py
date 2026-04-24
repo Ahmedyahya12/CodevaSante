@@ -31,7 +31,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "authentication.apps.AuthenticationConfig",
-    "drf_yasg",
+    "drf_yasg", "patients"
 ]
 
 
@@ -147,3 +147,4 @@ SWAGGER_SETTINGS = {
     },
     "USE_SESSION_AUTH": False,
 }
+
