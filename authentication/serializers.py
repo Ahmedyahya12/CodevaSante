@@ -7,16 +7,19 @@ from .models import (
     CustomUser,
     UserRole,
     PatientProfile,
-    DoctorProfile,
-    ReceptionistProfile,
 )
 
 
 class PatientRegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
+
     date_of_birth = serializers.DateField(required=False, allow_null=True)
-    gender = serializers.ChoiceField(choices=PatientProfile.GENDER_CHOICES, required=False, allow_blank=True)
+    gender = serializers.ChoiceField(
+        choices=PatientProfile.GENDER_CHOICES,
+        required=False,
+        allow_blank=True,
+    )
     address = serializers.CharField(required=False, allow_blank=True)
     national_id = serializers.CharField(required=False, allow_blank=True)
     emergency_contact = serializers.CharField(required=False, allow_blank=True)
@@ -46,7 +49,9 @@ class PatientRegisterSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:
-            raise serializers.ValidationError({"password_confirm": "كلمتا المرور غير متطابقتين."})
+            raise serializers.ValidationError(
+                {"password_confirm": "كلمتا المرور غير متطابقتين."}
+            )
         return attrs
 
     def create(self, validated_data):
@@ -72,14 +77,14 @@ class PatientRegisterSerializer(serializers.ModelSerializer):
             is_first_login=False,
         )
 
-        patient_profile = user.patient_profile
-        patient_profile.date_of_birth = profile_data["date_of_birth"]
-        patient_profile.gender = profile_data["gender"]
-        patient_profile.address = profile_data["address"]
-        patient_profile.national_id = profile_data["national_id"]
-        patient_profile.emergency_contact = profile_data["emergency_contact"]
-        patient_profile.medical_notes = profile_data["medical_notes"]
-        patient_profile.save()
+        profile = user.patient_profile
+        profile.date_of_birth = profile_data["date_of_birth"]
+        profile.gender = profile_data["gender"]
+        profile.address = profile_data["address"]
+        profile.national_id = profile_data["national_id"]
+        profile.emergency_contact = profile_data["emergency_contact"]
+        profile.medical_notes = profile_data["medical_notes"]
+        profile.save()
 
         return user
 
@@ -88,15 +93,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     username_field = "email"
 
     def validate(self, attrs):
-        credentials = {
-            "email": attrs.get("email"),
-            "password": attrs.get("password"),
-        }
-
         user = authenticate(
             request=self.context.get("request"),
-            username=credentials["email"],
-            password=credentials["password"]
+            username=attrs.get("email"),
+            password=attrs.get("password"),
         )
 
         if user is None:
@@ -147,7 +147,9 @@ class FirstLoginSetPasswordSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if attrs["new_password"] != attrs["confirm_password"]:
-            raise serializers.ValidationError({"confirm_password": "كلمتا المرور غير متطابقتين."})
+            raise serializers.ValidationError(
+                {"confirm_password": "كلمتا المرور غير متطابقتين."}
+            )
         return attrs
 
 
@@ -158,5 +160,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if attrs["new_password"] != attrs["confirm_password"]:
-            raise serializers.ValidationError({"confirm_password": "كلمتا المرور غير متطابقتين."})
+            raise serializers.ValidationError(
+                {"confirm_password": "كلمتا المرور غير متطابقتين."}
+            )
         return attrs

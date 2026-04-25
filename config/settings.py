@@ -31,7 +31,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "authentication.apps.AuthenticationConfig",
-    "drf_yasg",
+    "drf_yasg","doctors","patients","appointments","medicalrecords","reception"
+
 ]
 
 

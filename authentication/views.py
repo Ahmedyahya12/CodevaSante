@@ -24,21 +24,7 @@ class PatientRegisterView(generics.CreateAPIView):
     @swagger_auto_schema(
         tags=["Auth"],
         operation_summary="إنشاء حساب مريض",
-        operation_description="يمكن للمريض إنشاء حساب جديد في النظام.",
         request_body=PatientRegisterSerializer,
-        responses={
-            201: openapi.Response(
-                description="تم إنشاء حساب المريض بنجاح.",
-                schema=openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        "message": openapi.Schema(type=openapi.TYPE_STRING),
-                        "data": openapi.Schema(type=openapi.TYPE_OBJECT),
-                    },
-                ),
-            ),
-            400: "بيانات غير صالحة",
-        },
     )
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
@@ -48,12 +34,10 @@ class PatientRegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        response_serializer = self.get_serializer(user)
-
         return Response(
             {
                 "message": "تم إنشاء حساب المريض بنجاح.",
-                "data": response_serializer.data,
+                "data": CurrentUserSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -66,51 +50,14 @@ class CustomLoginView(TokenObtainPairView):
     @swagger_auto_schema(
         tags=["Auth"],
         operation_summary="تسجيل الدخول",
-        operation_description="تسجيل الدخول باستخدام البريد الإلكتروني وكلمة المرور.",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=["email", "password"],
             properties={
-                "email": openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    format=openapi.FORMAT_EMAIL,
-                    description="البريد الإلكتروني",
-                    example="admin@gmail.com",
-                ),
-                "password": openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    description="كلمة المرور",
-                    example="Admin@12345",
-                ),
+                "email": openapi.Schema(type=openapi.TYPE_STRING, format="email"),
+                "password": openapi.Schema(type=openapi.TYPE_STRING),
             },
         ),
-        responses={
-            200: openapi.Response(
-                description="تم تسجيل الدخول بنجاح",
-                schema=openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        "refresh": openapi.Schema(type=openapi.TYPE_STRING),
-                        "access": openapi.Schema(type=openapi.TYPE_STRING),
-                        "user": openapi.Schema(
-                            type=openapi.TYPE_OBJECT,
-                            properties={
-                                "id": openapi.Schema(type=openapi.TYPE_INTEGER),
-                                "email": openapi.Schema(type=openapi.TYPE_STRING),
-                                "first_name": openapi.Schema(type=openapi.TYPE_STRING),
-                                "last_name": openapi.Schema(type=openapi.TYPE_STRING),
-                                "full_name": openapi.Schema(type=openapi.TYPE_STRING),
-                                "phone": openapi.Schema(type=openapi.TYPE_STRING),
-                                "role": openapi.Schema(type=openapi.TYPE_STRING),
-                                "role_display": openapi.Schema(type=openapi.TYPE_STRING),
-                                "is_first_login": openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                            },
-                        ),
-                    },
-                ),
-            ),
-            401: "بيانات الدخول غير صحيحة",
-        },
     )
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
@@ -122,11 +69,7 @@ class CurrentUserView(APIView):
     @swagger_auto_schema(
         tags=["Auth"],
         operation_summary="بيانات المستخدم الحالي",
-        operation_description="إرجاع بيانات المستخدم المسجل دخوله حاليًا.",
-        responses={
-            200: CurrentUserSerializer,
-            401: "غير مصرح",
-        },
+        responses={200: CurrentUserSerializer},
     )
     def get(self, request):
         serializer = CurrentUserSerializer(request.user)
@@ -139,13 +82,7 @@ class FirstLoginSetPasswordView(APIView):
     @swagger_auto_schema(
         tags=["Auth"],
         operation_summary="تعيين كلمة المرور لأول دخول للطبيب",
-        operation_description="يستعمل هذا endpoint فقط للطبيب عند أول تسجيل دخول.",
         request_body=FirstLoginSetPasswordSerializer,
-        responses={
-            200: openapi.Response(description="تم تعيين كلمة المرور بنجاح."),
-            400: "طلب غير صالح",
-            403: "غير مسموح",
-        },
     )
     def post(self, request):
         user = request.user
@@ -170,9 +107,7 @@ class FirstLoginSetPasswordView(APIView):
         user.save()
 
         return Response(
-            {
-                "message": "تم تعيين كلمة المرور بنجاح. يمكنك الآن استخدام الحساب بشكل طبيعي."
-            },
+            {"message": "تم تعيين كلمة المرور بنجاح. يمكنك الآن استخدام الحساب بشكل طبيعي."},
             status=status.HTTP_200_OK,
         )
 
@@ -183,13 +118,7 @@ class ChangePasswordView(APIView):
     @swagger_auto_schema(
         tags=["Auth"],
         operation_summary="تغيير كلمة المرور",
-        operation_description="يمكن للمستخدم المسجل دخوله تغيير كلمة المرور الحالية.",
         request_body=ChangePasswordSerializer,
-        responses={
-            200: openapi.Response(description="تم تغيير كلمة المرور بنجاح."),
-            400: "بيانات غير صالحة",
-            401: "غير مصرح",
-        },
     )
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data)

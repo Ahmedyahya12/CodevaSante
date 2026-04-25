@@ -32,10 +32,17 @@ schema_view = get_schema_view(
     public=True,
     permission_classes=[permissions.AllowAny],
 )
+
+
+from django.urls import path, include
+
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include("authentication.urls")),
-    # Swagger
-    path("swagger/", schema_view.with_ui("swagger", cache_timeout=0), name="swagger"),
-    path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="redoc"),
+    path("api/patients/", include("patients.urls")),
+    path("api/doctors/", include("doctors.urls")),
+    path("api/appointments/", include("appointments.urls")),
+    path("api/medical-records/", include("medicalrecords.urls")),
+    path("api/reception/", include("reception.urls")),
 ]
