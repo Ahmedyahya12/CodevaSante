@@ -5,11 +5,14 @@ from authentication.models import DoctorProfile, UserRole
 User = get_user_model()
 
 
+
+
 class DoctorListSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source="user.id", read_only=True)
     full_name = serializers.CharField(source="user.full_name", read_only=True)
     email = serializers.EmailField(source="user.email", read_only=True)
     phone = serializers.CharField(source="user.phone", read_only=True)
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = DoctorProfile
@@ -22,7 +25,22 @@ class DoctorListSerializer(serializers.ModelSerializer):
             "bio",
             "years_of_experience",
             "available",
+            "max_patients_per_slot",
+            "image",
         ]
+
+    def get_image(self, obj):
+        request = self.context.get("request")
+
+        if not obj.image:
+            return None
+
+        image_url = obj.image.url
+
+        if request:
+            return request.build_absolute_uri(image_url)
+
+        return image_url
 
 
 class AdminCreateDoctorSerializer(serializers.Serializer):
@@ -87,4 +105,6 @@ class DoctorProfileUpdateSerializer(serializers.ModelSerializer):
             "bio",
             "years_of_experience",
             "available",
+            "max_patients_per_slot",
+            "image",
         ]

@@ -27,15 +27,15 @@ class DoctorCreateMedicalRecordView(generics.CreateAPIView):
 
         patient = serializer.validated_data["patient"]
 
-        # RG-004: تحقق أن المريض تابع للطبيب
-        if not DoctorPatient.objects.filter(
-            doctor=request.user,
-            patient=patient
-        ).exists():
-            return Response(
-                {"message": "غير مصرح: هذا المريض ليس ضمن مرضاك."},
-                status=403,
-            )
+        # # RG-004: تحقق أن المريض تابع للطبيب
+        # if not DoctorPatient.objects.filter(
+        #     doctor=request.user,
+        #     patient=patient
+        # ).exists():
+        #     return Response(
+        #         {"message": "غير مصرح: هذا المريض ليس ضمن مرضاك."},
+        #         status=403,
+        #     )
 
         record = MedicalRecord.objects.create(
             patient=patient,

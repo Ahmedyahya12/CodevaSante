@@ -1,6 +1,14 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, PatientProfile, DoctorProfile, ReceptionistProfile
+
+from .models import (
+    CustomUser,
+    PatientProfile,
+    DoctorProfile,
+    ReceptionistProfile,
+    UserRole,
+)
+from .utils import send_activation_email
 
 
 @admin.register(CustomUser)
@@ -16,6 +24,7 @@ class CustomUserAdmin(UserAdmin):
         "is_staff",
         "is_first_login",
     )
+
     list_filter = ("role", "is_active", "is_staff", "is_superuser")
     ordering = ("-created_at",)
     search_fields = ("email", "first_name", "last_name", "phone")
@@ -62,6 +71,38 @@ class CustomUserAdmin(UserAdmin):
     )
 
     filter_horizontal = ("groups", "user_permissions")
+
+    def save_model(self, request, obj, form, change):
+        is_new = obj.pk is None
+
+        if is_new and obj.role in [UserRole.DOCTOR, UserRole.RECEPTIONIST]:
+            obj.is_first_login = True
+            obj.is_active = True
+
+        super().save_model(request, obj, form, change)
+
+        if is_new:
+            if obj.role == UserRole.DOCTOR:
+                DoctorProfile.objects.get_or_create(user=obj)
+
+            elif obj.role == UserRole.RECEPTIONIST:
+                ReceptionistProfile.objects.get_or_create(user=obj)
+
+            elif obj.role == UserRole.PATIENT:
+                PatientProfile.objects.get_or_create(user=obj)
+
+            if obj.role in [UserRole.DOCTOR, UserRole.RECEPTIONIST]:
+                try:
+                    send_activation_email(obj)
+                    messages.success(
+                        request,
+                        f"تم إنشاء الحساب وإرسال رابط تفعيل كلمة المرور إلى {obj.email}.",
+                    )
+                except Exception as exc:
+                    messages.error(
+                        request,
+                        f"تم إنشاء الحساب لكن فشل إرسال البريد الإلكتروني: {exc}",
+                    )
 
 
 @admin.register(PatientProfile)

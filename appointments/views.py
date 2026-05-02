@@ -2,7 +2,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
-
+from patients.models import DoctorPatient
 from .models import Appointment, AppointmentStatus
 from .serializers import (
     AppointmentSerializer,
@@ -10,6 +10,61 @@ from .serializers import (
     ReceptionCreateAppointmentSerializer,
 )
 from .permissions import IsPatient, IsReceptionist, IsDoctor
+
+
+from django.utils.timezone import now
+from .permissions import IsReceptionist
+
+
+class TodayAppointmentsView(generics.ListAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsReceptionist]
+
+    def get_queryset(self):
+        today = now().date()
+        return Appointment.objects.filter(date=today).select_related(
+            "doctor", "patient"
+        )
+
+
+class ConfirmAppointmentView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsReceptionist]
+
+    def post(self, request, pk):
+        try:
+            appointment = Appointment.objects.get(id=pk)
+        except Appointment.DoesNotExist:
+            return Response({"message": "الموعد غير موجود"}, status=404)
+
+        appointment.status = AppointmentStatus.CONFIRMED
+        appointment.save()
+
+        return Response({"message": "تم تأكيد الموعد"})
+
+
+class CheckInAppointmentView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsReceptionist]
+
+    def post(self, request, pk):
+        try:
+            appointment = Appointment.objects.get(id=pk)
+        except Appointment.DoesNotExist:
+            return Response({"message": "الموعد غير موجود"}, status=404)
+
+        appointment.status = AppointmentStatus.CHECKED_IN
+        appointment.save()
+
+        return Response({"message": "تم تسجيل حضور المريض"})
+
+
+class PatientAppointmentsView(generics.ListAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsPatient]
+
+    def get_queryset(self):
+        return Appointment.objects.filter(patient=self.request.user).select_related(
+            "doctor", "patient"
+        )
 
 
 class PatientCreateAppointmentView(generics.CreateAPIView):
@@ -22,9 +77,18 @@ class PatientCreateAppointmentView(generics.CreateAPIView):
         request_body=CreateAppointmentSerializer,
     )
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(
+            data=request.data,
+            context={"request": request},
+        )
         serializer.is_valid(raise_exception=True)
+
         appointment = serializer.save()
+
+        DoctorPatient.objects.get_or_create(
+            doctor=appointment.doctor,
+            patient=request.user,
+        )
 
         return Response(
             {
@@ -76,6 +140,7 @@ class ReceptionCreateAppointmentView(generics.CreateAPIView):
         request_body=ReceptionCreateAppointmentSerializer,
     )
     def post(self, request, *args, **kwargs):
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         appointment = serializer.save()

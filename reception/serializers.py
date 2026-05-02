@@ -1,15 +1,25 @@
 from rest_framework import serializers
+
+from authentication.models import CustomUser
 from appointments.models import Appointment
 
 
+class ReceptionUserSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id",
+            "full_name",
+            "email",
+            "phone",
+        ]
+
+
 class ReceptionAppointmentSerializer(serializers.ModelSerializer):
-    patient_name = serializers.CharField(source="patient.full_name", read_only=True)
-    patient_email = serializers.EmailField(source="patient.email", read_only=True)
-    patient_phone = serializers.CharField(source="patient.phone", read_only=True)
-
-    doctor_name = serializers.CharField(source="doctor.full_name", read_only=True)
-    doctor_email = serializers.EmailField(source="doctor.email", read_only=True)
-
+    patient = ReceptionUserSerializer(read_only=True)
+    doctor = ReceptionUserSerializer(read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
@@ -17,16 +27,14 @@ class ReceptionAppointmentSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "patient",
-            "patient_name",
-            "patient_email",
-            "patient_phone",
             "doctor",
-            "doctor_name",
-            "doctor_email",
-            "date",
-            "time",
+            "appointment_date",
+            "appointment_time",
             "reason",
+            "department",
+            "visit_type",
             "status",
             "status_display",
-            "created_at",  
+            "price",
+            "created_at",
         ]

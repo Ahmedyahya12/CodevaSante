@@ -16,6 +16,49 @@ from .serializers import (
 )
 
 
+
+from django.contrib.auth import get_user_model
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
+
+from .tokens import activation_token_generator
+from .serializers import ActivationSetPasswordSerializer
+
+User = get_user_model()
+
+
+class ActivationSetPasswordView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except Exception:
+            return Response(
+                {"message": "رابط التفعيل غير صالح."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not activation_token_generator.check_token(user, token):
+            return Response(
+                {"message": "رابط التفعيل غير صالح أو منتهي الصلاحية."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = ActivationSetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user.set_password(serializer.validated_data["password"])
+        user.is_first_login = False
+        user.is_active = True
+        user.save()
+
+        return Response(
+            {"message": "تم تعيين كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول."},
+            status=status.HTTP_200_OK,
+        )
+
 class PatientRegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = PatientRegisterSerializer

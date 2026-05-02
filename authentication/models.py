@@ -88,12 +88,16 @@ class DoctorProfile(models.Model):
         related_name="doctor_profile",
         verbose_name="المستخدم",
     )
+    image = models.ImageField(upload_to='doctors/', blank=True, null=True)
     specialty = models.CharField(max_length=150, blank=True, verbose_name="التخصص")
     bio = models.TextField(blank=True, verbose_name="نبذة")
     years_of_experience = models.PositiveIntegerField(
         default=0, verbose_name="سنوات الخبرة"
     )
     available = models.BooleanField(default=True, verbose_name="متاح")
+    max_patients_per_slot = models.PositiveIntegerField(
+        default=1, verbose_name="عدد المرضى في نفس الوقت"
+    )
 
     class Meta:
         verbose_name = "ملف الطبيب"

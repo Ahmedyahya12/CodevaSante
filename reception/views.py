@@ -1,12 +1,7 @@
-from django.shortcuts import render
-
-# Create your views here.
 from django.utils import timezone
-
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 from drf_yasg.utils import swagger_auto_schema
 
 from appointments.models import Appointment, AppointmentStatus
@@ -18,38 +13,78 @@ class TodayAppointmentsView(generics.ListAPIView):
     serializer_class = ReceptionAppointmentSerializer
     permission_classes = [permissions.IsAuthenticated, IsReceptionist]
 
-    @swagger_auto_schema(
-        tags=["Reception"],
-        operation_summary="قائمة مواعيد اليوم",
-        operation_description="REC-001: يمكن لموظف الاستقبال الاطلاع على مواعيد اليوم.",
-    )
+    @swagger_auto_schema(tags=["Reception"], operation_summary="قائمة مواعيد اليوم")
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
         today = timezone.localdate()
-        return Appointment.objects.select_related(
-            "patient",
-            "doctor",
-        ).filter(date=today).order_by("time")
+        return (
+            Appointment.objects.select_related("patient", "doctor")
+            .filter(appointment_date=today)
+            .order_by("appointment_time")
+        )
+
+
+class ReceptionAppointmentsView(generics.ListAPIView):
+    serializer_class = ReceptionAppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsReceptionist]
+
+    def get_queryset(self):
+        return (
+            Appointment.objects.select_related("patient", "doctor")
+            .all()
+            .order_by("-appointment_date", "-appointment_time")
+        )
+
+
+class ReceptionAppointmentStatusUpdateView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsReceptionist]
+
+    def patch(self, request, pk):
+        try:
+            appointment = Appointment.objects.select_related("patient", "doctor").get(
+                pk=pk
+            )
+        except Appointment.DoesNotExist:
+            return Response({"message": "الموعد غير موجود."}, status=404)
+
+        new_status = request.data.get("status")
+
+        allowed = [
+            AppointmentStatus.PENDING,
+            AppointmentStatus.CONFIRMED,
+            AppointmentStatus.CANCELLED,
+        ]
+
+        if new_status not in allowed:
+            return Response(
+                {"message": "موظف الاستقبال يمكنه فقط تأكيد أو إلغاء الموعد."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = new_status
+        appointment.save()
+
+        return Response(
+            {
+                "message": "تم تحديث حالة الموعد بنجاح.",
+                "data": ReceptionAppointmentSerializer(appointment).data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ConfirmPatientArrivalView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsReceptionist]
 
-    @swagger_auto_schema(
-        tags=["Reception"],
-        operation_summary="تأكيد حضور المريض",
-        operation_description="REC-002: يمكن لموظف الاستقبال تأكيد حضور المريض عند وصوله.",
-    )
     def post(self, request, pk):
         try:
-            appointment = Appointment.objects.get(pk=pk)
-        except Appointment.DoesNotExist:
-            return Response(
-                {"message": "الموعد غير موجود."},
-                status=status.HTTP_404_NOT_FOUND,
+            appointment = Appointment.objects.select_related("patient", "doctor").get(
+                pk=pk
             )
+        except Appointment.DoesNotExist:
+            return Response({"message": "الموعد غير موجود."}, status=404)
 
         if appointment.status == AppointmentStatus.CANCELLED:
             return Response(
@@ -57,13 +92,7 @@ class ConfirmPatientArrivalView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if appointment.status == AppointmentStatus.CHECKED_IN:
-            return Response(
-                {"message": "تم تأكيد حضور هذا المريض مسبقًا."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        appointment.status = AppointmentStatus.CHECKED_IN
+        appointment.status = AppointmentStatus.CONFIRMED
         appointment.save()
 
         return Response(

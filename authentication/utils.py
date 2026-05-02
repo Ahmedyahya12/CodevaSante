@@ -48,13 +48,35 @@ CodevaSolution - CodevaClinic
         },
     )
 
-    return _send_transactional_email(
-        user=user,
-        subject=subject,
-        text_body=text_body,
-        html_body=html_body,
-        entity_ref_prefix="codevaclinic-activation",
+    from_email = getattr(
+        settings,
+        "DEFAULT_FROM_EMAIL",
+        "CodevaClinic <codeva.erp@gmail.com>",
     )
+
+    reply_to_address = getattr(settings, "EMAIL_REPLY_TO", "codeva.erp@gmail.com")
+
+    email = EmailMultiAlternatives(
+        subject=subject,
+        body=text_body,
+        from_email=from_email,
+        to=[user.email],
+        reply_to=[reply_to_address],
+        headers={
+            "X-Entity-Ref-ID": f"codevaerp-activation-{user.pk}",
+            "Precedence": "transactional",
+            "List-Unsubscribe": f"<mailto:{reply_to_address}?subject=unsubscribe>",
+        },
+    )
+
+    email.attach_alternative(html_body, "text/html")
+
+    sent_count = email.send(fail_silently=False)
+
+    if sent_count != 1:
+        raise Exception("Email non envoyé par le serveur SMTP.")
+
+    return sent_count
 
 
 def send_patient_activation_email(user):
@@ -71,19 +93,16 @@ def send_patient_activation_email(user):
 
     full_name = user.full_name or user.email
 
-    subject = "CodevaClinic - فعّل حسابك واحجز مواعيدك بسهولة"
+    # ✅ Sujet court, neutre, sans diacritiques ni mots marketing
+    subject = "CodevaClinic - تفعيل حسابك"
 
+    # ✅ Corps purement transactionnel, sans liste de bénéfices
     text_body = f"""
 مرحبًا {full_name}
 
-تم إنشاء حسابك كمريض في منصة CodevaClinic.
-
-من خلال حسابك يمكنك:
-- حجز موعد طبي بسهولة
-- متابعة مواعيدك القادمة
-- الوصول إلى خدمات العيادة بشكل أسرع
-
-لتعيين كلمة المرور وتفعيل حسابك:
+تم إنشاء حسابك في منصة .
+CodevaClinic
+لتفعيل حسابك وتعيين كلمة المرور، افتح الرابط التالي:
 {activation_link}
 
 CodevaSolution - CodevaClinic
@@ -102,7 +121,7 @@ CodevaSolution - CodevaClinic
         subject=subject,
         text_body=text_body,
         html_body=html_body,
-        entity_ref_prefix="codevaclinic-patient-activation",
+        entity_ref_prefix="codevaerp-activation",  # ✅ Même préfixe que le mail staff
     )
 
 
@@ -124,7 +143,9 @@ def _send_transactional_email(user, subject, text_body, html_body, entity_ref_pr
         headers={
             "X-Entity-Ref-ID": f"{entity_ref_prefix}-{user.pk}",
             "Precedence": "transactional",
+            # ✅ Format correct RFC pour List-Unsubscribe
             "List-Unsubscribe": f"<mailto:{reply_to_address}?subject=unsubscribe>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",  # ✅ Ajout one-click (Gmail l'apprécie)
         },
     )
 

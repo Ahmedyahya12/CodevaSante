@@ -64,15 +64,6 @@ class ReceptionistCreatePatientView(generics.CreateAPIView):
     serializer_class = ReceptionistCreatePatientSerializer
     permission_classes = [permissions.IsAuthenticated, IsReceptionist]
 
-    @swagger_auto_schema(
-        tags=["Patients"],
-        operation_summary="إضافة مريض جديد",
-        operation_description="يمكن لموظف الاستقبال إنشاء مريض جديد في النظام.",
-        request_body=ReceptionistCreatePatientSerializer,
-    )
-    def post(self, request, *args, **kwargs):
-        return self.create(request, *args, **kwargs)
-
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -80,7 +71,7 @@ class ReceptionistCreatePatientView(generics.CreateAPIView):
 
         return Response(
             {
-                "message": "تمت إضافة المريض بنجاح.",
+                "message": "تمت إضافة المريض بنجاح وتم إرسال رابط تعيين كلمة المرور إلى بريده الإلكتروني.",
                 "data": PatientProfileSerializer(profile).data,
             },
             status=status.HTTP_201_CREATED,

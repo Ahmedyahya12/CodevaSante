@@ -7,6 +7,7 @@ from .views import (
     CurrentUserView,
     FirstLoginSetPasswordView,
     ChangePasswordView,
+    ActivationSetPasswordView,
 )
 
 urlpatterns = [
@@ -14,6 +15,11 @@ urlpatterns = [
     path("login/", CustomLoginView.as_view(), name="login"),
     path("refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("me/", CurrentUserView.as_view(), name="current-user"),
+    path(
+        "set-password/<uidb64>/<token>/",
+        ActivationSetPasswordView.as_view(),
+        name="activation-set-password",
+    ),
     path(
         "first-login/set-password/",
         FirstLoginSetPasswordView.as_view(),

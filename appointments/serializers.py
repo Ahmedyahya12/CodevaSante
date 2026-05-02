@@ -1,6 +1,8 @@
+from datetime import date, time
+
 from rest_framework import serializers
 from authentication.models import UserRole
-from .models import Appointment
+from .models import Appointment, AppointmentStatus
 
 
 class AppointmentSerializer(serializers.ModelSerializer):
@@ -25,12 +27,34 @@ class CreateAppointmentSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        if not attrs.get("doctor"):
+        doctor = attrs.get("doctor")
+        date = attrs.get("date")
+        time = attrs.get("time")
+
+        if not doctor:
             raise serializers.ValidationError({"doctor": "الطبيب مطلوب."})
-        if not attrs.get("date"):
+        if not date:
             raise serializers.ValidationError({"date": "تاريخ الموعد مطلوب."})
-        if not attrs.get("time"):
+        if not time:
             raise serializers.ValidationError({"time": "وقت الموعد مطلوب."})
+
+        max_places = doctor.doctor_profile.max_patients_per_slot
+
+        current_count = (
+            Appointment.objects.filter(
+                doctor=doctor,
+                date=date,
+                time=time,
+            )
+            .exclude(status=AppointmentStatus.CANCELLED)
+            .count()
+        )
+
+        if current_count >= max_places:
+            raise serializers.ValidationError(
+                {"time": "هذا الوقت ممتلئ، يرجى اختيار وقت آخر."}
+            )
+
         return attrs
 
     def create(self, validated_data):
@@ -42,7 +66,16 @@ class CreateAppointmentSerializer(serializers.ModelSerializer):
 class ReceptionCreateAppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
-        fields = ["patient", "doctor", "date", "time", "reason"]
+        fields = [
+            "patient",
+            "doctor",
+            "appointment_date",
+            "appointment_time",
+            "reason",
+            "department",
+            "visit_type",
+            "price",
+        ]
 
     def validate_patient(self, value):
         if value.role != UserRole.PATIENT:
@@ -61,10 +94,16 @@ class ReceptionCreateAppointmentSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if not attrs.get("patient"):
             raise serializers.ValidationError({"patient": "المريض مطلوب."})
+
         if not attrs.get("doctor"):
             raise serializers.ValidationError({"doctor": "الطبيب مطلوب."})
-        if not attrs.get("date"):
-            raise serializers.ValidationError({"date": "تاريخ الموعد مطلوب."})
-        if not attrs.get("time"):
-            raise serializers.ValidationError({"time": "وقت الموعد مطلوب."})
+
+        if not attrs.get("appointment_date"):
+            raise serializers.ValidationError(
+                {"appointment_date": "تاريخ الموعد مطلوب."}
+            )
+
+        if not attrs.get("appointment_time"):
+            raise serializers.ValidationError({"appointment_time": "وقت الموعد مطلوب."})
+
         return attrs
